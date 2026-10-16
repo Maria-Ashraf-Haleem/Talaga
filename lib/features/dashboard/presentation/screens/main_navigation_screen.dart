@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:talaga/features/shopping/presentation/screens/shopping_list_screen.dart';
 import '../../../../app/router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../inventory/presentation/screens/fridge_inventory_screen.dart';
@@ -43,12 +44,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       FridgeInventoryScreen(
         onBackToHome: () => _switchTab(0),
       ),
-      _ComingSoonTabPlaceholder(
-        title: 'Shopping List',
-        subtitle: 'سيتم إضافة شاشة المشتريات في الدفعة الخامسة (05)',
-        icon: Icons.shopping_cart_outlined,
-        onBackToHome: () => _switchTab(0),
-      ),
+      //  هنا التعديل: استبدال الـ Placeholder بشاشتك الجديدة
+      const ShoppingListScreen(),
       _ComingSoonTabPlaceholder(
         title: 'Alerts & Activity',
         subtitle: 'سيتم إضافة شاشة التنبيهات والنشاط في الدفعة الخامسة (06)',
