@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../app/router.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../inventory/presentation/screens/fridge_inventory_screen.dart';
 import 'home_dashboard_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
@@ -35,11 +36,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     final List<Widget> tabs = [
       HomeDashboardScreen(
         onSwitchTab: _switchTab,
+        onAddItemTap: () {
+          Navigator.pushNamed(context, AppRouter.addEditProduct);
+        },
       ),
-      _ComingSoonTabPlaceholder(
-        title: 'Fridge Inventory',
-        subtitle: 'سيتم إضافة شاشات المخزون الأربعة في الدفعة الرابعة (04)',
-        icon: Icons.kitchen_rounded,
+      FridgeInventoryScreen(
         onBackToHome: () => _switchTab(0),
       ),
       _ComingSoonTabPlaceholder(
