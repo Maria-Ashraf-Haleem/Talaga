@@ -16,11 +16,7 @@
 
 **Talaga** is a collaborative household fridge inventory and grocery management application built with Flutter. It is designed to help families and shared households track food quantities, monitor product expiration dates, manage shared shopping lists in real time, and receive automated alerts for low-stock and expiring items.
 
----
 
-## App Screens Preview
-
-![Talaga App Screens](assets/screenshots/app_screens.jpeg)
 
 ---
 
