@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
-import '../features/auth/presentation/screens/splash_screen.dart';
+import '../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/register_screen.dart';
-import '../features/auth/presentation/screens/forgot_password_screen.dart';
-import '../features/household/presentation/screens/create_home_screen.dart';
-import '../features/household/presentation/screens/invite_members_screen.dart';
-import '../features/household/presentation/screens/family_members_screen.dart';
+import '../features/auth/presentation/screens/splash_screen.dart';
 import '../features/dashboard/presentation/screens/main_navigation_screen.dart';
+import '../features/household/presentation/screens/create_home_screen.dart';
+import '../features/household/presentation/screens/family_members_screen.dart';
+import '../features/household/presentation/screens/invite_members_screen.dart';
 import '../features/inventory/domain/models/product_item.dart';
 import '../features/inventory/presentation/screens/add_edit_product_screen.dart';
+import '../features/inventory/presentation/screens/fridge_inventory_screen.dart';
 import '../features/inventory/presentation/screens/product_details_screen.dart';
+import '../features/notifications/presentation/screens/alerts_activity_screen.dart';
+import '../features/profile/presentation/screens/profile_settings_screen.dart';
+import '../features/shopping/presentation/screens/shopping_list_screen.dart';
 
 class AppRouter {
   AppRouter._();
@@ -29,8 +33,14 @@ class AppRouter {
   static const String mainLayout = '/main-layout';
 
   // 04 - Inventory Routes
+  static const String inventory = '/inventory';
   static const String addEditProduct = '/add-edit-product';
   static const String productDetails = '/product-details';
+
+  // 05, 06, 07 - Shopping, Alerts, Profile Routes
+  static const String shoppingList = '/shopping-list';
+  static const String alertsActivity = '/alerts-activity';
+  static const String profileSettings = '/profile-settings';
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -49,17 +59,30 @@ class AppRouter {
       case familyMembers:
         return MaterialPageRoute(builder: (_) => const FamilyMembersScreen());
       case mainLayout:
-        return MaterialPageRoute(builder: (_) => const MainNavigationScreen());
+        final initialIndex = settings.arguments as int? ?? 0;
+        return MaterialPageRoute(
+          builder: (_) => MainNavigationScreen(initialIndex: initialIndex),
+        );
+      case inventory:
+        return MaterialPageRoute(builder: (_) => const FridgeInventoryScreen());
       case addEditProduct:
         final product = settings.arguments as ProductItem?;
         return MaterialPageRoute(
           builder: (_) => AddEditProductScreen(product: product),
         );
       case productDetails:
-        final product = settings.arguments as ProductItem? ??
-            dummyInventoryItems.first;
+        final product =
+            settings.arguments as ProductItem? ?? dummyInventoryItems.first;
         return MaterialPageRoute(
           builder: (_) => ProductDetailsScreen(product: product),
+        );
+      case shoppingList:
+        return MaterialPageRoute(builder: (_) => const ShoppingListScreen());
+      case alertsActivity:
+        return MaterialPageRoute(builder: (_) => const AlertsActivityScreen());
+      case profileSettings:
+        return MaterialPageRoute(
+          builder: (_) => const ProfileSettingsScreen(),
         );
       default:
         return MaterialPageRoute(builder: (_) => const SplashScreen());

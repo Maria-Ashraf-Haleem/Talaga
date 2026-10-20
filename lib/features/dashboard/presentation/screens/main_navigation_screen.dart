@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:talaga/features/shopping/presentation/screens/shopping_list_screen.dart';
 import '../../../../app/router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../inventory/presentation/screens/fridge_inventory_screen.dart';
+import '../../../notifications/presentation/screens/alerts_activity_screen.dart';
+import '../../../profile/presentation/screens/profile_settings_screen.dart';
+import '../../../shopping/presentation/screens/shopping_list_screen.dart';
 import 'home_dashboard_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
@@ -44,22 +46,14 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       FridgeInventoryScreen(
         onBackToHome: () => _switchTab(0),
       ),
-      //  هنا التعديل: استبدال الـ Placeholder بشاشتك الجديدة
-      const ShoppingListScreen(),
-      _ComingSoonTabPlaceholder(
-        title: 'Alerts & Activity',
-        subtitle: 'سيتم إضافة شاشة التنبيهات والنشاط في الدفعة الخامسة (06)',
-        icon: Icons.notifications_none_rounded,
+      ShoppingListScreen(
         onBackToHome: () => _switchTab(0),
       ),
-      _ComingSoonTabPlaceholder(
-        title: 'Profile & Settings',
-        subtitle: 'سيتم إضافة شاشة الإعدادات في الدفعة الخامسة (07)',
-        icon: Icons.more_horiz_rounded,
+      AlertsActivityScreen(
         onBackToHome: () => _switchTab(0),
-        extraActionText: 'Open Family Members',
-        onExtraAction: () =>
-            Navigator.pushNamed(context, AppRouter.familyMembers),
+      ),
+      ProfileSettingsScreen(
+        onBackToHome: () => _switchTab(0),
       ),
     ];
 
@@ -122,75 +116,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               label: 'More',
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ComingSoonTabPlaceholder extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final VoidCallback onBackToHome;
-  final String? extraActionText;
-  final VoidCallback? onExtraAction;
-
-  const _ComingSoonTabPlaceholder({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.onBackToHome,
-    this.extraActionText,
-    this.onExtraAction,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.scaffoldBg,
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 72,
-                height: 72,
-                decoration: const BoxDecoration(
-                  color: AppColors.softGreenBg,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, size: 36, color: AppColors.primary),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                subtitle,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              if (extraActionText != null && onExtraAction != null) ...[
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: onExtraAction,
-                  child: Text(extraActionText!),
-                ),
-              ],
-            ],
-          ),
         ),
       ),
     );
