@@ -4,6 +4,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
 import '../../../../core/widgets/custom_text_field.dart';
 import '../../../../core/widgets/primary_button.dart';
+import '../../data/household_repository.dart';
 
 class CreateHomeScreen extends StatefulWidget {
   const CreateHomeScreen({super.key});
@@ -14,11 +15,79 @@ class CreateHomeScreen extends StatefulWidget {
 
 class _CreateHomeScreenState extends State<CreateHomeScreen> {
   final TextEditingController _homeNameController = TextEditingController();
+  final TextEditingController _inviteCodeController = TextEditingController();
+  bool _isCreating = false;
+  bool _isJoining = false;
 
   @override
   void dispose() {
     _homeNameController.dispose();
+    _inviteCodeController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleCreateHome() async {
+    final homeName = _homeNameController.text.trim();
+    if (homeName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a name for your home.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isCreating = true);
+    try {
+      await HouseholdRepository.instance.createHousehold(homeName);
+      if (!mounted) return;
+      Navigator.pushNamed(context, AppRouter.inviteMembers);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isCreating = false);
+    }
+  }
+
+  Future<void> _handleJoinHome() async {
+    final code = _inviteCodeController.text.trim();
+    if (code.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter the 6-character invite code.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isJoining = true);
+    try {
+      await HouseholdRepository.instance.joinHouseholdByCode(code);
+      if (!mounted) return;
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRouter.mainLayout,
+            (route) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isJoining = false);
+    }
   }
 
   @override
@@ -35,7 +104,11 @@ class _CreateHomeScreenState extends State<CreateHomeScreen> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: IconButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    if (Navigator.canPop(context)) {
+                      Navigator.pop(context);
+                    }
+                  },
                   icon: const Icon(
                     Icons.arrow_back_ios_new_rounded,
                     size: 18,
@@ -64,7 +137,7 @@ class _CreateHomeScreenState extends State<CreateHomeScreen> {
               ),
               const SizedBox(height: 28),
 
-              // Form Card
+              // Create Home Form Card
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
@@ -89,11 +162,48 @@ class _CreateHomeScreenState extends State<CreateHomeScreen> {
                       controller: _homeNameController,
                     ),
                     const SizedBox(height: 20),
-                    PrimaryButton(
+                    _isCreating
+                        ? const Center(child: CircularProgressIndicator())
+                        : PrimaryButton(
                       text: 'Create Home',
-                      onPressed: () {
-                        Navigator.pushNamed(context, AppRouter.inviteMembers);
-                      },
+                      onPressed: _handleCreateHome,
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Join Existing Home Card (For other family members)
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.75),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Have an Invite Code?',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    CustomTextField(
+                      hintText: 'Enter 6-digit code (e.g. 7K8M2P)',
+                      controller: _inviteCodeController,
+                    ),
+                    const SizedBox(height: 16),
+                    _isJoining
+                        ? const Center(child: CircularProgressIndicator())
+                        : PrimaryButton(
+                      text: 'Join Existing Home',
+                      onPressed: _handleJoinHome,
                     ),
                   ],
                 ),

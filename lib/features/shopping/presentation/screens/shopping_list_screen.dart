@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
 import '../../../../core/widgets/primary_button.dart';
+import '../../data/shopping_repository.dart';
+import '../../domain/models/shopping_item.dart';
 
 class ShoppingListScreen extends StatefulWidget {
   final VoidCallback? onBackToHome;
@@ -17,44 +19,13 @@ class ShoppingListScreen extends StatefulWidget {
 
 class _ShoppingListScreenState extends State<ShoppingListScreen> {
   final TextEditingController _addItemController = TextEditingController();
+  final ShoppingRepository _repository = ShoppingRepository();
 
-  final List<_ShoppingItem> _items = [
-    _ShoppingItem(
-      name: 'Milk',
-      quantity: '2 liters',
-      emoji: '🥛',
-      bgColor: const Color(0xFFE3F2FD),
-      isChecked: false,
-    ),
-    _ShoppingItem(
-      name: 'Bread',
-      quantity: '1 pack',
-      emoji: '🍞',
-      bgColor: const Color(0xFFFFF8E1),
-      isChecked: false,
-    ),
-    _ShoppingItem(
-      name: 'Eggs',
-      quantity: '12 pieces',
-      emoji: '🥚',
-      bgColor: const Color(0xFFFFF3E0),
-      isChecked: true,
-    ),
-    _ShoppingItem(
-      name: 'Chicken',
-      quantity: '1 kg',
-      emoji: '🍗',
-      bgColor: const Color(0xFFFCE4EC),
-      isChecked: false,
-    ),
-    _ShoppingItem(
-      name: 'Tomatoes',
-      quantity: '1 kg',
-      emoji: '🍅',
-      bgColor: const Color(0xFFFFEBEE),
-      isChecked: false,
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _repository.seedDefaultItemsIfNeeded();
+  }
 
   @override
   void dispose() {
@@ -62,23 +33,41 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
     super.dispose();
   }
 
-  void _addNewItem() {
+  Future<void> _addNewItem() async {
     final text = _addItemController.text.trim();
     if (text.isEmpty) return;
 
-    setState(() {
-      _items.insert(
-        0,
-        _ShoppingItem(
-          name: text,
-          quantity: '1 piece',
-          emoji: '🛒',
-          bgColor: AppColors.softGreenBg,
-          isChecked: false,
-        ),
-      );
-      _addItemController.clear();
-    });
+    _addItemController.clear();
+    await _repository.addShoppingItem(
+      ShoppingItem(
+        id: '',
+        name: text,
+        quantity: 1,
+        unit: 'piece',
+      ),
+    );
+  }
+
+  String _getEmojiForName(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('milk')) return '🥛';
+    if (lower.contains('bread')) return '🍞';
+    if (lower.contains('egg')) return '🥚';
+    if (lower.contains('chicken') || lower.contains('meat')) return '🍗';
+    if (lower.contains('tomato')) return '🍅';
+    return '🛒';
+  }
+
+  Color _getBgColorForName(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('milk')) return const Color(0xFFE3F2FD);
+    if (lower.contains('bread')) return const Color(0xFFFFF8E1);
+    if (lower.contains('egg')) return const Color(0xFFFFF3E0);
+    if (lower.contains('chicken') || lower.contains('meat')) {
+      return const Color(0xFFFCE4EC);
+    }
+    if (lower.contains('tomato')) return const Color(0xFFFFEBEE);
+    return AppColors.softGreenBg;
   }
 
   @override
@@ -192,129 +181,158 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                       ),
                       const SizedBox(height: 14),
 
-                      // Shopping Items List
+                      // Shopping Items List from Firestore
                       Expanded(
-                        child: ListView.separated(
-                          itemCount: _items.length,
-                          separatorBuilder: (_, __) => const Divider(
-                            color: AppColors.divider,
-                            height: 16,
-                          ),
-                          itemBuilder: (context, index) {
-                            final item = _items[index];
-                            return InkWell(
-                              onTap: () {
-                                setState(() {
-                                  item.isChecked = !item.isChecked;
-                                });
-                              },
-                              borderRadius: BorderRadius.circular(12),
-                              child: Padding(
-                                padding:
-                                const EdgeInsets.symmetric(vertical: 4),
-                                child: Row(
-                                  children: [
-                                    // Custom Checkbox matching UI
-                                    GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          item.isChecked = !item.isChecked;
-                                        });
-                                      },
-                                      child: Container(
-                                        width: 22,
-                                        height: 22,
-                                        decoration: BoxDecoration(
-                                          color: item.isChecked
-                                              ? AppColors.primary
-                                              : Colors.white,
-                                          borderRadius:
-                                          BorderRadius.circular(6),
-                                          border: Border.all(
-                                            color: item.isChecked
-                                                ? AppColors.primary
-                                                : AppColors.textHint,
-                                            width: 1.5,
+                        child: StreamBuilder<List<ShoppingItem>>(
+                          stream: _repository.getShoppingListStream(),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            }
+
+                            final items = snapshot.data ?? [];
+
+                            if (items.isEmpty) {
+                              return const Center(
+                                child: Text(
+                                  'No items in shopping list',
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              );
+                            }
+
+                            return ListView.separated(
+                              itemCount: items.length,
+                              separatorBuilder: (_, __) => const Divider(
+                                color: AppColors.divider,
+                                height: 16,
+                              ),
+                              itemBuilder: (context, index) {
+                                final item = items[index];
+                                return InkWell(
+                                  onTap: () =>
+                                      _repository.toggleItemBoughtStatus(item),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Padding(
+                                    padding:
+                                    const EdgeInsets.symmetric(vertical: 4),
+                                    child: Row(
+                                      children: [
+                                        // Custom Checkbox matching UI
+                                        GestureDetector(
+                                          onTap: () => _repository
+                                              .toggleItemBoughtStatus(item),
+                                          child: Container(
+                                            width: 22,
+                                            height: 22,
+                                            decoration: BoxDecoration(
+                                              color: item.isBought
+                                                  ? AppColors.primary
+                                                  : Colors.white,
+                                              borderRadius:
+                                              BorderRadius.circular(6),
+                                              border: Border.all(
+                                                color: item.isBought
+                                                    ? AppColors.primary
+                                                    : AppColors.textHint,
+                                                width: 1.5,
+                                              ),
+                                            ),
+                                            child: item.isBought
+                                                ? const Icon(
+                                              Icons.check_rounded,
+                                              size: 16,
+                                              color: Colors.white,
+                                            )
+                                                : null,
                                           ),
                                         ),
-                                        child: item.isChecked
-                                            ? const Icon(
-                                          Icons.check_rounded,
-                                          size: 16,
-                                          color: Colors.white,
-                                        )
-                                            : null,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
+                                        const SizedBox(width: 12),
 
-                                    // Item Emoji Box
-                                    Container(
-                                      width: 44,
-                                      height: 44,
-                                      decoration: BoxDecoration(
-                                        color: item.bgColor,
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          item.emoji,
-                                          style: const TextStyle(fontSize: 24),
+                                        // Item Emoji Box
+                                        Container(
+                                          width: 44,
+                                          height: 44,
+                                          decoration: BoxDecoration(
+                                            color: _getBgColorForName(item.name),
+                                            borderRadius:
+                                            BorderRadius.circular(12),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              _getEmojiForName(item.name),
+                                              style:
+                                              const TextStyle(fontSize: 24),
+                                            ),
+                                          ),
                                         ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
+                                        const SizedBox(width: 12),
 
-                                    // Item Name & Quantity
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            item.name,
-                                            style: const TextStyle(
-                                              fontSize: 14.5,
-                                              fontWeight: FontWeight.w700,
-                                              color: AppColors.textPrimary,
-                                            ),
+                                        // Item Name & Quantity
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                item.name,
+                                                style: TextStyle(
+                                                  fontSize: 14.5,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppColors.textPrimary,
+                                                  decoration: item.isBought
+                                                      ? TextDecoration
+                                                      .lineThrough
+                                                      : null,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                item.isBought &&
+                                                    item.boughtByUserName !=
+                                                        null
+                                                    ? '${item.formattedQuantity} • Bought by ${item.boughtByUserName}'
+                                                    : item.formattedQuantity,
+                                                style: const TextStyle(
+                                                  fontSize: 12.5,
+                                                  color:
+                                                  AppColors.textSecondary,
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            item.quantity,
-                                            style: const TextStyle(
-                                              fontSize: 12.5,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
+                                        ),
 
-                                    // Drag / Action Handle Icon
-                                    PopupMenuButton<String>(
-                                      icon: const Icon(
-                                        Icons.dehaze_rounded,
-                                        color: AppColors.textHint,
-                                        size: 20,
-                                      ),
-                                      onSelected: (value) {
-                                        if (value == 'delete') {
-                                          setState(() {
-                                            _items.removeAt(index);
-                                          });
-                                        }
-                                      },
-                                      itemBuilder: (context) => const [
-                                        PopupMenuItem(
-                                          value: 'delete',
-                                          child: Text('Remove Item'),
+                                        // Drag / Action Handle Icon
+                                        PopupMenuButton<String>(
+                                          icon: const Icon(
+                                            Icons.dehaze_rounded,
+                                            color: AppColors.textHint,
+                                            size: 20,
+                                          ),
+                                          onSelected: (value) {
+                                            if (value == 'delete') {
+                                              _repository
+                                                  .deleteShoppingItem(item.id);
+                                            }
+                                          },
+                                          itemBuilder: (context) => const [
+                                            PopupMenuItem(
+                                              value: 'delete',
+                                              child: Text('Remove Item'),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
-                                  ],
-                                ),
-                              ),
+                                  ),
+                                );
+                              },
                             );
                           },
                         ),
@@ -325,14 +343,10 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                       PrimaryButton(
                         text: 'Add to Inventory',
                         onPressed: () {
-                          final checkedCount =
-                              _items.where((e) => e.isChecked).length;
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
+                            const SnackBar(
                               content: Text(
-                                checkedCount > 0
-                                    ? '$checkedCount purchased item(s) added to Inventory!'
-                                    : 'Select purchased items first to add to Inventory.',
+                                'Purchased items synced with household inventory!',
                               ),
                               backgroundColor: AppColors.primary,
                             ),
@@ -349,20 +363,4 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
       ),
     );
   }
-}
-
-class _ShoppingItem {
-  final String name;
-  final String quantity;
-  final String emoji;
-  final Color bgColor;
-  bool isChecked;
-
-  _ShoppingItem({
-    required this.name,
-    required this.quantity,
-    required this.emoji,
-    required this.bgColor,
-    required this.isChecked,
-  });
 }

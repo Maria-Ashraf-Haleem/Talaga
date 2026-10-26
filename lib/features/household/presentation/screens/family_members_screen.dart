@@ -1,40 +1,25 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../../../app/router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
+import '../../../auth/data/auth_repository.dart';
+import '../../data/household_repository.dart';
 
 class FamilyMembersScreen extends StatelessWidget {
   const FamilyMembersScreen({super.key});
 
+  static const List<Color> _avatarColors = [
+    Color(0xFF1E88E5),
+    Color(0xFF43A047),
+    Color(0xFFE53935),
+    Color(0xFFFB8C00),
+    Color(0xFF8E24AA),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final List<_MemberItem> members = [
-      const _MemberItem(
-        name: 'You',
-        role: 'Owner',
-        isOwner: true,
-        avatarColor: Color(0xFF1E88E5),
-        icon: Icons.person,
-      ),
-      const _MemberItem(
-        name: 'Ahmed',
-        role: 'Member',
-        avatarColor: Color(0xFF43A047),
-        icon: Icons.person_3_rounded,
-      ),
-      const _MemberItem(
-        name: 'Sara',
-        role: 'Member',
-        avatarColor: Color(0xFFE53935),
-        icon: Icons.person_2_rounded,
-      ),
-      const _MemberItem(
-        name: 'Omar',
-        role: 'Member',
-        avatarColor: Color(0xFFFB8C00),
-        icon: Icons.person_4_rounded,
-      ),
-    ];
+    final currentUid = AuthRepository.instance.currentUserId;
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
@@ -77,87 +62,129 @@ class FamilyMembersScreen extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: members.length,
-                      separatorBuilder: (_, __) => const Divider(
-                        color: AppColors.divider,
-                        height: 20,
-                      ),
-                      itemBuilder: (context, index) {
-                        final member = members[index];
-                        return InkWell(
-                          onTap: () {},
-                          borderRadius: BorderRadius.circular(12),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 22,
-                                  backgroundColor: member.avatarColor
-                                      .withValues(alpha: 0.18),
-                                  child: Icon(
-                                    member.icon,
-                                    color: member.avatarColor,
-                                    size: 24,
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                    StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                      stream: HouseholdRepository.instance
+                          .getCurrentHouseholdStream(),
+                      builder: (context, homeSnap) {
+                        final ownerId = homeSnap.data?.data()?['ownerId'];
+
+                        return StreamBuilder<
+                            QuerySnapshot<Map<String, dynamic>>>(
+                          stream: HouseholdRepository.instance
+                              .getHouseholdMembersStream(),
+                          builder: (context, membersSnap) {
+                            if (membersSnap.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Padding(
+                                padding: EdgeInsets.all(20),
+                                child:
+                                Center(child: CircularProgressIndicator()),
+                              );
+                            }
+
+                            final docs = membersSnap.data?.docs ?? [];
+                            if (docs.isEmpty) {
+                              return const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Text('No members found in this home.'),
+                              );
+                            }
+
+                            return ListView.separated(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: docs.length,
+                              separatorBuilder: (_, __) => const Divider(
+                                color: AppColors.divider,
+                                height: 20,
+                              ),
+                              itemBuilder: (context, index) {
+                                final data = docs[index].data();
+                                final uid = data['uid'] as String? ?? '';
+                                final rawName =
+                                    data['name'] as String? ?? 'Member';
+                                final isMe = uid == currentUid;
+                                final isOwner =
+                                    uid == ownerId || (ownerId == null && isMe);
+                                final displayName =
+                                isMe ? '$rawName (You)' : rawName;
+                                final color =
+                                _avatarColors[index % _avatarColors.length];
+
+                                return Padding(
+                                  padding:
+                                  const EdgeInsets.symmetric(vertical: 4),
+                                  child: Row(
                                     children: [
-                                      Text(
-                                        member.name,
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.textPrimary,
+                                      CircleAvatar(
+                                        radius: 22,
+                                        backgroundColor:
+                                        color.withValues(alpha: 0.18),
+                                        child: Icon(
+                                          Icons.person_rounded,
+                                          color: color,
+                                          size: 24,
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
-                                      if (member.isOwner)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 2.5,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.softGreenBg,
-                                            borderRadius:
-                                            BorderRadius.circular(6),
-                                          ),
-                                          child: Text(
-                                            member.role,
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w700,
-                                              color: AppColors.primary,
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              displayName,
+                                              style: const TextStyle(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.textPrimary,
+                                              ),
                                             ),
-                                          ),
-                                        )
-                                      else
-                                        Text(
-                                          member.role,
-                                          style: const TextStyle(
-                                            fontSize: 12.5,
-                                            color: AppColors.textSecondary,
-                                          ),
+                                            const SizedBox(height: 4),
+                                            if (isOwner)
+                                              Container(
+                                                padding:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: 10,
+                                                  vertical: 2.5,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.softGreenBg,
+                                                  borderRadius:
+                                                  BorderRadius.circular(6),
+                                                ),
+                                                child: const Text(
+                                                  'Owner',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: AppColors.primary,
+                                                  ),
+                                                ),
+                                              )
+                                            else
+                                              const Text(
+                                                'Member',
+                                                style: TextStyle(
+                                                  fontSize: 12.5,
+                                                  color:
+                                                  AppColors.textSecondary,
+                                                ),
+                                              ),
+                                          ],
                                         ),
+                                      ),
+                                      const Icon(
+                                        Icons.chevron_right_rounded,
+                                        color: AppColors.textHint,
+                                        size: 22,
+                                      ),
                                     ],
                                   ),
-                                ),
-                                const Icon(
-                                  Icons.chevron_right_rounded,
-                                  color: AppColors.textHint,
-                                  size: 22,
-                                ),
-                              ],
-                            ),
-                          ),
+                                );
+                              },
+                            );
+                          },
                         );
                       },
                     ),
@@ -199,20 +226,4 @@ class FamilyMembersScreen extends StatelessWidget {
       ),
     );
   }
-}
-
-class _MemberItem {
-  final String name;
-  final String role;
-  final bool isOwner;
-  final Color avatarColor;
-  final IconData icon;
-
-  const _MemberItem({
-    required this.name,
-    required this.role,
-    this.isOwner = false,
-    required this.avatarColor,
-    required this.icon,
-  });
 }

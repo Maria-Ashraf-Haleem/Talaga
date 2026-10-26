@@ -3,29 +3,58 @@ class ShoppingItem {
   final String name;
   final double quantity;
   final String unit;
+  final String category;
+  final String householdId;
   final bool isBought;
+  final String? boughtByUserId;
+  final String? boughtByUserName;
 
   ShoppingItem({
     required this.id,
     required this.name,
     required this.quantity,
-    required this.unit,
+    this.unit = 'piece',
+    this.category = 'General',
+    this.householdId = 'home_123',
     this.isBought = false,
+    this.boughtByUserId,
+    this.boughtByUserName,
   });
 
-  ShoppingItem copyWith({
-    String? id,
-    String? name,
-    double? quantity,
-    String? unit,
-    bool? isBought,
-  }) {
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'quantity': quantity,
+      'unit': unit,
+      'category': category,
+      'householdId': householdId,
+      'isBought': isBought,
+      'boughtByUserId': boughtByUserId,
+      'boughtByUserName': boughtByUserName,
+    };
+  }
+
+  factory ShoppingItem.fromMap(Map<String, dynamic> map, String documentId) {
     return ShoppingItem(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      quantity: quantity ?? this.quantity,
-      unit: unit ?? this.unit,
-      isBought: isBought ?? this.isBought,
+      id: documentId,
+      name: map['name'] ?? '',
+      quantity: (map['quantity'] is num)
+          ? (map['quantity'] as num).toDouble()
+          : double.tryParse(map['quantity']?.toString() ?? '1') ?? 1.0,
+      unit: map['unit'] ?? 'piece',
+      category: map['category'] ?? 'General',
+      householdId: map['householdId'] ?? 'home_123',
+      isBought: map['isBought'] ?? false,
+      boughtByUserId: map['boughtByUserId'],
+      boughtByUserName: map['boughtByUserName'],
     );
+  }
+
+  String get formattedQuantity {
+    final qtyStr = quantity == quantity.roundToDouble()
+        ? quantity.toInt().toString()
+        : quantity.toString();
+    return '$qtyStr $unit';
   }
 }

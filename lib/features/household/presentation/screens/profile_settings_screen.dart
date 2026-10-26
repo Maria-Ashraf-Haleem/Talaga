@@ -1,7 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../../../app/router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
+import '../../../auth/data/auth_repository.dart';
+import '../../../household/data/household_repository.dart';
 
 class ProfileSettingsScreen extends StatefulWidget {
   final VoidCallback? onBackToHome;
@@ -22,6 +25,13 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final userName = AuthRepository.instance.currentUserName ??
+        AuthRepository.instance.currentUser?.displayName ??
+        'Member';
+    final userEmail = AuthRepository.instance.currentUserEmail ??
+        AuthRepository.instance.currentUser?.email ??
+        '';
+
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       body: SafeArea(
@@ -80,19 +90,19 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
+                        children: [
                           Text(
-                            'Ahmed',
-                            style: TextStyle(
+                            userName,
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
                               color: AppColors.textPrimary,
                             ),
                           ),
-                          SizedBox(height: 2),
+                          const SizedBox(height: 2),
                           Text(
-                            'ahmed@example.com',
-                            style: TextStyle(
+                            userEmail,
+                            style: const TextStyle(
                               fontSize: 12.5,
                               color: AppColors.textSecondary,
                             ),
@@ -110,32 +120,51 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               const SizedBox(height: 18),
               const _SectionHeader('Home & Members'),
               const SizedBox(height: 8),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Column(
-                  children: [
-                    _SettingsNavTile(
-                      icon: Icons.home_outlined,
-                      title: 'My Home',
-                      subtitle: 'Family Home',
-                      onTap: () {
-                        Navigator.pushNamed(context, AppRouter.inviteMembers);
-                      },
+              StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                stream:
+                HouseholdRepository.instance.getCurrentHouseholdStream(),
+                builder: (context, snapshot) {
+                  final data = snapshot.data?.data();
+                  final homeName =
+                      (data?['homeName'] as String?) ?? 'Family Home';
+                  final memberIds = (data?['memberIds'] as List?) ?? [];
+                  final memberCount =
+                  memberIds.isEmpty ? 1 : memberIds.length;
+
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
                     ),
-                    const Divider(color: AppColors.divider, height: 1),
-                    _SettingsNavTile(
-                      icon: Icons.person_add_alt_1_outlined,
-                      title: 'Manage Members',
-                      subtitle: '4 members',
-                      onTap: () {
-                        Navigator.pushNamed(context, AppRouter.familyMembers);
-                      },
+                    child: Column(
+                      children: [
+                        _SettingsNavTile(
+                          icon: Icons.home_outlined,
+                          title: 'My Home',
+                          subtitle: homeName,
+                          onTap: () {
+                            Navigator.pushNamed(
+                              context,
+                              AppRouter.inviteMembers,
+                            );
+                          },
+                        ),
+                        const Divider(color: AppColors.divider, height: 1),
+                        _SettingsNavTile(
+                          icon: Icons.person_add_alt_1_outlined,
+                          title: 'Manage Members',
+                          subtitle: '$memberCount member(s)',
+                          onTap: () {
+                            Navigator.pushNamed(
+                              context,
+                              AppRouter.familyMembers,
+                            );
+                          },
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
               const SizedBox(height: 18),
               const _SectionHeader('Notifications'),
@@ -190,7 +219,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     ),
                     const Divider(color: AppColors.divider, height: 1),
                     InkWell(
-                      onTap: () {
+                      onTap: () async {
+                        await AuthRepository.instance.signOut();
+                        if (!context.mounted) return;
                         Navigator.pushNamedAndRemoveUntil(
                           context,
                           AppRouter.login,

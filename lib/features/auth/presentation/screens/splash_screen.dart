@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../app/router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/widgets/talaga_logo.dart';
+import '../../data/auth_repository.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -17,11 +18,30 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer(const Duration(seconds: 3), () {
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, AppRouter.login);
+    _timer = Timer(const Duration(seconds: 3), _checkAuthAndNavigate);
+  }
+
+  Future<void> _checkAuthAndNavigate() async {
+    if (!mounted) return;
+
+    if (AuthRepository.instance.currentUser == null) {
+      Navigator.pushReplacementNamed(context, AppRouter.login);
+      return;
+    }
+
+    try {
+      final hasHousehold =
+      await AuthRepository.instance.loadCurrentUserSession();
+      if (!mounted) return;
+      if (hasHousehold) {
+        Navigator.pushReplacementNamed(context, AppRouter.mainLayout);
+      } else {
+        Navigator.pushReplacementNamed(context, AppRouter.createHome);
       }
-    });
+    } catch (_) {
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, AppRouter.login);
+    }
   }
 
   @override
@@ -35,7 +55,7 @@ class _SplashScreenState extends State<SplashScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF2F1EC),
       body: GestureDetector(
-        onTap: () => Navigator.pushReplacementNamed(context, AppRouter.login),
+        onTap: _checkAuthAndNavigate,
         child: Stack(
           children: [
             // Top-Left Leaf & Tomato Decoration
@@ -136,13 +156,13 @@ class _SplashScreenState extends State<SplashScreen> {
             Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                children: [
-                  const TalagaLogo(
+                children: const [
+                  TalagaLogo(
                     iconSize: 92,
                     fontSize: 38,
                   ),
-                  const SizedBox(height: 14),
-                  const Text(
+                  SizedBox(height: 14),
+                  Text(
                     'Manage your fridge\nTogether',
                     textAlign: TextAlign.center,
                     style: TextStyle(
@@ -156,7 +176,7 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
             ),
 
-            // Bottom Progress Indicator Bar (Matches Image)
+            // Bottom Progress Indicator Bar
             Positioned(
               bottom: 42,
               left: 0,

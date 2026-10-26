@@ -5,6 +5,7 @@ import '../../../../app/theme/app_text_styles.dart';
 import '../../../../core/widgets/custom_text_field.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../../../core/widgets/talaga_logo.dart';
+import '../../data/auth_repository.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -17,6 +18,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -26,8 +28,59 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _navigateToCreateHome() {
-    Navigator.pushNamed(context, AppRouter.createHome);
+  Future<void> _handleRegister() async {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (name.isEmpty || email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fill in your name, email, and password.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    if (password.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Password must be at least 6 characters long.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      await AuthRepository.instance.registerUser(
+        name: name,
+        email: email,
+        password: password,
+      );
+
+      if (!mounted) return;
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRouter.createHome,
+            (route) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AuthRepository.getReadableErrorMessage(e)),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -93,25 +146,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       controller: _passwordController,
                     ),
                     const SizedBox(height: 20),
-                    PrimaryButton(
+                    _isLoading
+                        ? const CircularProgressIndicator()
+                        : PrimaryButton(
                       text: 'Create Account',
-                      onPressed: _navigateToCreateHome,
+                      onPressed: _handleRegister,
                     ),
                     const SizedBox(height: 18),
                     Row(
                       children: [
                         const Expanded(
-                          child: Divider(color: AppColors.divider, thickness: 1),
+                          child:
+                          Divider(color: AppColors.divider, thickness: 1),
                         ),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           child: Text(
                             'or continue with',
-                            style: AppTextStyles.subtitle.copyWith(fontSize: 12),
+                            style:
+                            AppTextStyles.subtitle.copyWith(fontSize: 12),
                           ),
                         ),
                         const Expanded(
-                          child: Divider(color: AppColors.divider, thickness: 1),
+                          child:
+                          Divider(color: AppColors.divider, thickness: 1),
                         ),
                       ],
                     ),
@@ -120,7 +178,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         _RegisterSocialButton(
-                          onTap: _navigateToCreateHome,
+                          onTap: _handleRegister,
                           child: const Text(
                             'G',
                             style: TextStyle(
@@ -132,7 +190,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         const SizedBox(width: 20),
                         _RegisterSocialButton(
-                          onTap: _navigateToCreateHome,
+                          onTap: _handleRegister,
                           child: const Icon(
                             Icons.apple,
                             size: 26,

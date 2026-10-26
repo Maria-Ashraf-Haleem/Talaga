@@ -5,6 +5,7 @@ import '../../../../app/theme/app_text_styles.dart';
 import '../../../../core/widgets/custom_text_field.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../../../core/widgets/talaga_logo.dart';
+import '../../data/auth_repository.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,6 +17,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -24,8 +26,48 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _navigateToCreateHome() {
-    Navigator.pushReplacementNamed(context, AppRouter.mainLayout);
+  Future<void> _handleLogin() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter both your email and password.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final hasHousehold = await AuthRepository.instance.loginUser(
+        email: email,
+        password: password,
+      );
+
+      if (!mounted) return;
+
+      if (hasHousehold) {
+        Navigator.pushReplacementNamed(context, AppRouter.mainLayout);
+      } else {
+        Navigator.pushReplacementNamed(context, AppRouter.createHome);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AuthRepository.getReadableErrorMessage(e)),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -95,25 +137,30 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 18),
-                    PrimaryButton(
+                    _isLoading
+                        ? const CircularProgressIndicator()
+                        : PrimaryButton(
                       text: 'Sign In',
-                      onPressed: _navigateToCreateHome,
+                      onPressed: _handleLogin,
                     ),
                     const SizedBox(height: 20),
                     Row(
                       children: [
                         const Expanded(
-                          child: Divider(color: AppColors.divider, thickness: 1),
+                          child:
+                          Divider(color: AppColors.divider, thickness: 1),
                         ),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           child: Text(
                             'or continue with',
-                            style: AppTextStyles.subtitle.copyWith(fontSize: 12),
+                            style:
+                            AppTextStyles.subtitle.copyWith(fontSize: 12),
                           ),
                         ),
                         const Expanded(
-                          child: Divider(color: AppColors.divider, thickness: 1),
+                          child:
+                          Divider(color: AppColors.divider, thickness: 1),
                         ),
                       ],
                     ),
@@ -122,7 +169,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         _SocialIconButton(
-                          onTap: _navigateToCreateHome,
+                          onTap: _handleLogin,
                           child: const Text(
                             'G',
                             style: TextStyle(
@@ -134,7 +181,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(width: 20),
                         _SocialIconButton(
-                          onTap: _navigateToCreateHome,
+                          onTap: _handleLogin,
                           child: const Icon(
                             Icons.apple,
                             size: 26,

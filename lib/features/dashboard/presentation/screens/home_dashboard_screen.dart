@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/widgets/primary_button.dart';
+import '../../../auth/data/auth_repository.dart';
+import '../../../shopping/data/shopping_repository.dart';
+import '../../../shopping/domain/models/shopping_item.dart';
 
 class HomeDashboardScreen extends StatelessWidget {
   final ValueChanged<int>? onSwitchTab;
@@ -14,6 +17,10 @@ class HomeDashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final userName = AuthRepository.instance.currentUserName ??
+        AuthRepository.instance.currentUser?.displayName ??
+        'Member';
+
     return Scaffold(
       backgroundColor: AppColors.scaffoldBg,
       body: SafeArea(
@@ -22,7 +29,7 @@ class HomeDashboardScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header: Good Morning Ahmed + Notification Bell
+              // Header: Good Morning + Real Logged-in User Name + Notification Bell
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -39,17 +46,17 @@ class HomeDashboardScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Row(
-                        children: const [
+                        children: [
                           Text(
-                            'Ahmed',
-                            style: TextStyle(
+                            userName,
+                            style: const TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.w800,
                               color: AppColors.textPrimary,
                             ),
                           ),
-                          SizedBox(width: 6),
-                          Text(
+                          const SizedBox(width: 6),
+                          const Text(
                             '👋',
                             style: TextStyle(fontSize: 20),
                           ),
@@ -108,7 +115,7 @@ class HomeDashboardScreen extends StatelessWidget {
                             iconBgColor: AppColors.softGreenBg,
                             icon: Icons.inventory_2_rounded,
                             iconColor: AppColors.primary,
-                            onTap: () => onSwitchTab?.call(1), // Inventory Tab
+                            onTap: () => onSwitchTab?.call(1),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -121,7 +128,7 @@ class HomeDashboardScreen extends StatelessWidget {
                             iconBgColor: const Color(0xFFFEF3C7),
                             icon: Icons.warning_amber_rounded,
                             iconColor: const Color(0xFFF59E0B),
-                            onTap: () => onSwitchTab?.call(3), // Alerts Tab
+                            onTap: () => onSwitchTab?.call(3),
                           ),
                         ),
                       ],
@@ -140,7 +147,7 @@ class HomeDashboardScreen extends StatelessWidget {
                             iconBgColor: const Color(0xFFFFEDD5),
                             icon: Icons.event_busy_rounded,
                             iconColor: const Color(0xFFF97316),
-                            onTap: () => onSwitchTab?.call(3), // Alerts Tab
+                            onTap: () => onSwitchTab?.call(3),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -153,14 +160,14 @@ class HomeDashboardScreen extends StatelessWidget {
                             iconBgColor: const Color(0xFFFEE2E2),
                             icon: Icons.error_outline_rounded,
                             iconColor: const Color(0xFFEF4444),
-                            onTap: () => onSwitchTab?.call(3), // Alerts Tab
+                            onTap: () => onSwitchTab?.call(3),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 14),
 
-                    // Shopping List Wide Card
+                    // Shopping List Wide Card with Live Count
                     InkWell(
                       onTap: () => onSwitchTab?.call(2), // Shopping Tab
                       borderRadius: BorderRadius.circular(16),
@@ -179,8 +186,8 @@ class HomeDashboardScreen extends StatelessWidget {
                           children: [
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              children: const [
-                                Text(
+                              children: [
+                                const Text(
                                   'Shopping List',
                                   style: TextStyle(
                                     fontSize: 13.5,
@@ -188,14 +195,21 @@ class HomeDashboardScreen extends StatelessWidget {
                                     color: AppColors.textPrimary,
                                   ),
                                 ),
-                                SizedBox(height: 6),
-                                Text(
-                                  '7',
-                                  style: TextStyle(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF1D4ED8),
-                                  ),
+                                const SizedBox(height: 6),
+                                StreamBuilder<List<ShoppingItem>>(
+                                  stream: ShoppingRepository()
+                                      .getShoppingListStream(),
+                                  builder: (context, snapshot) {
+                                    final count = snapshot.data?.length ?? 0;
+                                    return Text(
+                                      '$count',
+                                      style: const TextStyle(
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFF1D4ED8),
+                                      ),
+                                    );
+                                  },
                                 ),
                               ],
                             ),
@@ -226,15 +240,6 @@ class HomeDashboardScreen extends StatelessWidget {
                       onPressed: () {
                         if (onAddItemTap != null) {
                           onAddItemTap!();
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Add Product Screen will be added in Batch 4!',
-                              ),
-                              backgroundColor: AppColors.primary,
-                            ),
-                          );
                         }
                       },
                     ),

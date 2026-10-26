@@ -1,6 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
+import '../../../shopping/data/shopping_repository.dart';
 
 class AlertsActivityScreen extends StatefulWidget {
   final VoidCallback? onBackToHome;
@@ -64,6 +66,15 @@ class _AlertsActivityScreenState extends State<AlertsActivityScreen> {
         .toList();
   }
 
+  String _formatTimeAgo(Timestamp? timestamp) {
+    if (timestamp == null) return 'Just now';
+    final diff = DateTime.now().difference(timestamp.toDate());
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -124,9 +135,7 @@ class _AlertsActivityScreenState extends State<AlertsActivityScreen> {
                           vertical: 7,
                         ),
                         decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppColors.primary
-                              : Colors.white,
+                          color: isSelected ? AppColors.primary : Colors.white,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: isSelected
@@ -253,28 +262,74 @@ class _AlertsActivityScreenState extends State<AlertsActivityScreen> {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(18),
                 ),
-                child: Column(
-                  children: const [
-                    _ActivityTile(
-                      userName: 'Ahmed',
-                      actionText: ' added ',
-                      itemName: 'Tomatoes',
-                      suffixText: '',
-                      timeAgo: '2 hours ago',
-                      avatarColor: Color(0xFF43A047),
-                      avatarIcon: Icons.person_3_rounded,
-                    ),
-                    Divider(color: AppColors.divider, height: 22),
-                    _ActivityTile(
-                      userName: 'Sara',
-                      actionText: ' updated ',
-                      itemName: 'Milk',
-                      suffixText: ' quantity',
-                      timeAgo: '5 hours ago',
-                      avatarColor: Color(0xFFE53935),
-                      avatarIcon: Icons.person_2_rounded,
-                    ),
-                  ],
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('notifications')
+                      .where(
+                    'householdId',
+                    isEqualTo: ShoppingRepository.currentHouseholdId,
+                  )
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    final docs = snapshot.data?.docs ?? [];
+
+                    // Sort newest first locally so no Firestore composite index is required
+                    final sortedDocs = List<QueryDocumentSnapshot>.from(docs)
+                      ..sort((a, b) {
+                        final tA = (a.data()
+                        as Map<String, dynamic>)['createdAt'] as Timestamp?;
+                        final tB = (b.data()
+                        as Map<String, dynamic>)['createdAt'] as Timestamp?;
+                        if (tA == null || tB == null) return 0;
+                        return tB.compareTo(tA);
+                      });
+
+                    return Column(
+                      children: [
+                        ...sortedDocs.map((doc) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          return Column(
+                            children: [
+                              _ActivityTile(
+                                userName: data['senderName'] ?? 'Member',
+                                actionText: data['actionText'] ?? ' bought ',
+                                itemName: data['itemName'] ?? 'Item',
+                                suffixText: data['suffixText'] ?? '',
+                                timeAgo: _formatTimeAgo(
+                                  data['createdAt'] as Timestamp?,
+                                ),
+                                avatarColor: const Color(0xFF43A047),
+                                avatarIcon: Icons.shopping_bag_rounded,
+                              ),
+                              const Divider(
+                                color: AppColors.divider,
+                                height: 22,
+                              ),
+                            ],
+                          );
+                        }),
+                        const _ActivityTile(
+                          userName: 'Ahmed',
+                          actionText: ' added ',
+                          itemName: 'Tomatoes',
+                          suffixText: '',
+                          timeAgo: '2 hours ago',
+                          avatarColor: Color(0xFF43A047),
+                          avatarIcon: Icons.person_3_rounded,
+                        ),
+                        const Divider(color: AppColors.divider, height: 22),
+                        const _ActivityTile(
+                          userName: 'Sara',
+                          actionText: ' updated ',
+                          itemName: 'Milk',
+                          suffixText: ' quantity',
+                          timeAgo: '5 hours ago',
+                          avatarColor: Color(0xFFE53935),
+                          avatarIcon: Icons.person_2_rounded,
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ],
